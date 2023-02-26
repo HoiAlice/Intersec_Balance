@@ -1,63 +1,42 @@
 import numpy as np
 
-def inner_point(x: float, y: float):
-    if(x != -1 * np.infty):
-        if(y != np.infty):
-            return(0.5 * (x + y))
-        else:
-            return x
-    else:
-        if(y != np.infty):
-            return y
-        else:
-            return 0
-        
+def projection_to_Rn(dim: int):
+    def P(x: np.ndarray):
+        return x
+    return P
+
+def projector_to_cube(dim: int):
+    def P(x: np.ndarray):
+        for i in range(dim):
+            if(x[i] >= 1):
+                x[i] = 1
+            if(x[i] <= 0):
+                x[i] = 0
+        return x
+    return P
+
+def projector_to_Rn_plus(dim: int):
+    def P(x: np.ndarray):
+        for i in range(dim):
+            if(x[i] <= 0):
+                x[i] = 0
+        return x
+    return P
+
 class Var_Solver:
-    def __init__(self, F, min_bounds: np.ndarray, max_bounds: np.ndarray):
-        if(len(min_bounds.shape) != 1 or len(max_bounds.shape) != 1):
-            print("Error: bounds have wrong shapes")
-            return None
-        if(min_bounds.shape[0] != max_bounds.shape[0]):
-            print("Error: bounds have different lenght")
-            return None
-        if((min_bounds > max_bounds).any()):
-            print("Error: bounds incorrect")
-            return None
-        
+    def __init__(self,F, n, projector):
         self.F = F
-        self.n = min_bounds.shape[0]
-        self.min_bounds = min_bounds
-        self.max_bounds = max_bounds
-        self.value = np.array([inner_point(min_bounds[i], max_bounds[i]) for i in range(self.n)])
-        
-    def projection(self, x: np.ndarray):
-        y = np.zeros(self.n)
-        for i in range(self.n):
-            y[i] = x[i]
-            if(x[i] < self.min_bounds[i]):
-                y[i] = self.min_bounds[i]
-            if(x[i] > self.max_bounds[i]):
-                y[i] = self.max_bounds[i]
-        return y
+        self.n = n
+        self.projector = projector
+        self.value = projector(np.zeros(n))
     
     def set_value(self, x_0: np.ndarray):
-        if(len(x_0.shape) != 1):
-            print("Error: x_0 have wrong shape")
-            return None
-        if(x_0.shape[0] != self.n):
-            print("Error: x_0 have wrong lenght")
-            return None
-        
-        self.value = self.projection(x_0)
+        self.value = self.projector(x_0)
     
     def step(self, a: float):
-        if(a <= 0):
-            print("Error: step size are negaitve")
-            return None
-        
-        y1 = self.projection(self.value - a * self.F(self.value))
-        y2 = self.projection(self.value - a * self.F(y1))
-        self.value = self.projection(self.value - a * self.F(y2))
+        y1 = self.projector(self.value - a * self.F(self.value))
+        y2 = self.projector(self.value - a * self.F(y1))
+        self.value = self.projector(self.value - a * self.F(y2))
         
     def solve(self, a: float, M: int):
         for m in range(M):
